@@ -13,7 +13,10 @@ class Signals():
     def __init__(self,signals):
         self.__signals = signals
         
-    def get_signal(self,i):
+    def get_signal_i(self,i):
         return self.__signals[i]
         
     
+    
+def synthetic_circle(radius1,radius2):
+    pass
