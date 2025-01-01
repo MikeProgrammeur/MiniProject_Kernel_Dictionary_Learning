@@ -1,51 +1,53 @@
 import numpy as np
+import random as rd
 
 class KernelDictionaryLearning():
-    def __init__(self,signals,kernel,sparsity_level,atom_number,dim,n_iter):
+    def __init__(self,signals,kernel,sparsity_level,atom_number,n_iter):
         self.__signals = signals # list of yi
         self.__sparsity_level = sparsity_level #T0
         self.__n = self.__signals.get_sig_number() #number of signals
         self.__kernel = kernel
-        self.__dim = dim
         self.__atom_number = atom_number #K
         self.__matrix_A = np.zeros((self.__n,self.__atom_number))
-        self.__matrix_X = np.zeros((self.__n,self.__n))
+        self.__matrix_X = np.zeros((self.__atom_number,self.__n))
         self.__KYY = np.zeros((self.__n,self.__n))
         self.__n_iter = n_iter
         
     def gen_KYY(self):
+        " generate the matrix KYY where KYYij = <K(Yi)|K(Yj)> "
         mat = np.zeros((self.__n,self.__n))
         for i in range(self.__n):
             for j in range(i+1):
-                mat[i,j] = self.__kernel.evaluate(self.signals.get_signal(i),self.signals.get_signal(j))
+                mat[i,j] = self.__kernel.evaluate(self.__signals.get_signal_i(i),self.__signals.get_signal_i(j))
                 if i!=j:
                     mat[j,i] = mat[i,j]
         return mat
                     
     def gen_KzY(self,z):
+        " generate the 1-row matrix KzY where KzYi = <z|K(Yi)> "
         vec = np.zeros(self.__n)
         for i in range(self.__n):
-            vec[i] = self.__kernel.evaluate(z,self.signals.get_signal_i(i))
+            vec[i] = self.__kernel.evaluate(z,self.__signals.get_signal_i(i))
         return np.expand_dims(vec,axis=1).T
         
     def KOMP(self, z): # a verifier
-        "Kernel orthogonal matching pursuit for input object signal z"
+        "Kernel orthogonal matching pursuit for input object signal z, return x the atom activation vector"
         # Variables initialization
         s = 0
         I = set()  # Ensemble des indices
         x = np.zeros(self.__atom_number)  # Vecteur des coefficients
-        z_hat = np.expand_dims(np.zeros(self.__n),axis=1).T # Approximation initiale de z vecteur colonne
-        print(f"{z_hat.shape} should be ({self.__n},1)")
+        z_hat = np.expand_dims(np.zeros(self.__n),axis=1) # Approximation initiale de z vecteur colonne
+        print(f"z_hat shape is {z_hat.shape} and should be ({self.__n},1)")
         KzY = self.gen_KzY(z)  # Vecteur KzY
-        print(f"{KzY.shape} should be (1,{self.__n})")
-        print(f"{self.__matrix_A[:,0].size} should be ({self.__n},1)")
+        print(f"KzY shape is {KzY.shape} and should be (1,{self.__n})")
+        print(f"a_i shape is {np.expand_dims(self.__matrix_A[:,0],axis=1).shape} and should be ({self.__n},1)")
 
-        while s < self.__sparsity_level: # REPEAT (1) - (6) T_o times
+        while s < self.__sparsity_level: # REPEAT (1) - (6) T_0 times
             # (1) COMPUTE TAU_I's
             tau = np.zeros(self.__atom_number)
             for i in range(self.__atom_number):
                 if i not in I:
-                    tau[i] = (KzY - np.dot(z_hat.T, self.__KYY))@self.__matrix_A[:,i]
+                    tau[i] = (KzY - np.dot(z_hat.T, self.__KYY))@np.expand_dims(self.__matrix_A[:,i],axis=1)
 
             # (2) FIND BEST RESIDUAL APPROXIMATION
             imax = np.argmax(np.abs(tau))
@@ -55,6 +57,8 @@ class KernelDictionaryLearning():
 
             # (4) COMPUTE NEW ORTHOGONAL PROJECTION
             A_I = self.__matrix_A[:,list(I)]
+            print(f"A_I shape is {A_I.shape} and should be ({self.__n},{len(I)})")
+            print(A_I.T@self.__KYY@A_I)
             x = np.linalg.inv(A_I.T@self.__KYY@A_I)@(KzY@A_I).T
 
             # (5) UPDATE Z APPROXIMATION
@@ -86,7 +90,11 @@ class KernelDictionaryLearning():
             sum = np.zeros((self.__n,self.__n))
             for j in range(self.__atom_number):
                 if j!=k:
-                    sum+=np.dot(self.__matrix_A[:,j],X[j])
+                    print("hello")
+                    print(np.dot(self.__matrix_A[:,j],X[j]).shape)
+                    print(np.dot(np.expand_dims(self.__matrix_A[:,j],axis=1),X[j]).shape)
+                    print("bye")
+                    sum+=np.dot(np.expand_dims(self.__matrix_A[:,j],axis=1),X[j])
             E_k = np.eye(self.__n) - sum
             
             # (3) RESTRICT E_k
@@ -102,13 +110,33 @@ class KernelDictionaryLearning():
             # (5) UPDATE k-th COLUMN OF A
             self.__matrix_A[:,k] = a_k
             
-        
+    def init_X(self):
+        index_up_to_K = [k for k in range(self.__atom_number)]
+        for i in range(self.__n):# Set T0 random elements of each column in X to be 1
+            atom_activated_index = rd.sample(index_up_to_K, self.__sparsity_level)
+            for j in atom_activated_index:
+                self.__matrix_X[j,i] = 1
+    
+    def init_A(self):
+        if self.__n>=self.__atom_number:
+            index_up_to_n = [n for n in range(self.__n)]
+            atom_dictionary_index = rd.sample(index_up_to_n, self.__sparsity_level)
+            for k,atom in enumerate(atom_dictionary_index):
+                self.__matrix_A[atom,k]=1
     
     def learn(self):
-        self.__KYY = self.gen_KYY() 
+        # Compute kernel image
+        self.__KYY = self.gen_KYY()
+        
+        # Initialize with random sparse coding at the beginning
+        self.init_X()
+        self.init_A()
+        
         
         for i in range(self.__n_iter):
+            # ALTERNATE n_iter TIMES sparse coding : (1) and dictionary update : (2)
             for j in range(self.__n):
                 self.__matrix_X[:,j] = self.KOMP(self.__signals.get_signal_i(j))
             self.KSVD(self.__matrix_X)
+        return "successfull"
         

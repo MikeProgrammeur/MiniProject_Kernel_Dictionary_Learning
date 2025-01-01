@@ -6,9 +6,11 @@ class Signal():
         self.__size = size # int
         
     def get_signal(self):
+        "return the signal as a numpy array"
         return self.__signal
     
     def get_size(self):
+        "return size/dimension of the signal"
         return self.__size
     
 class Signals():
@@ -23,14 +25,16 @@ class Signals():
         return 0
     
     def get_sig_number(self):
+        "return the number of signals"
         return self.__signal_number
     
 def synthetic_circle(radius,data_number):
     " return a object Signals containing 'data_number' 2D points from circle of radius 'radius' "
-    signals = []
-    for i in range(data_number):
+    signals_list = []
+    for _ in range(data_number):
         o = np.pi * np.random.uniform(0, 2)
-        s = Signals( radius*np.array([ np.cos(o),np.sin(o)] ), 2)
-        signals.append(s)
+        s = Signal( signal = radius*np.array([ np.cos(o),np.sin(o)] ), size = 2)
+        signals_list.append(s)
     
-    signals_object = Signals(signals)
+    signals_object = Signals(signals=signals_list)
+    return signals_object
