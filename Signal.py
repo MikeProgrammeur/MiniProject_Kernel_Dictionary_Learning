@@ -2,7 +2,7 @@ import numpy as np
 
 class Signal():
     def __init__(self,signal,size):
-        self.__signal = signal # numpy array
+        self.__signal = signal # numpy array of shape (size,)
         self.__size = size # int
         
     def get_signal(self):

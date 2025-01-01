@@ -1,8 +1,10 @@
 import numpy as np
 import random as rd
+import Kernel as kn
+import Signal as sg
 
 class KernelDictionaryLearning():
-    def __init__(self,signals,kernel,sparsity_level,atom_number,n_iter):
+    def __init__(self, signals : sg.Signals, kernel : kn.Kernel, sparsity_level : int, atom_number : int, n_iter : int):
         self.__signals = signals # list of yi
         self.__sparsity_level = sparsity_level #T0
         self.__n = self.__signals.get_sig_number() #number of signals
@@ -31,16 +33,16 @@ class KernelDictionaryLearning():
         return np.expand_dims(vec,axis=1).T
         
     def KOMP(self, z): # a verifier
-        "Kernel orthogonal matching pursuit for input object signal z, return x the atom activation vector"
+        "Kernel orthogonal matching pursuit for input object signal z, return x the atom activation vector and the norm of the last residual"
         # Variables initialization
         s = 0
         I = set()  # Ensemble des indices
         x = np.zeros(self.__atom_number)  # Vecteur des coefficients
         z_hat = np.expand_dims(np.zeros(self.__n),axis=1) # Approximation initiale de z vecteur colonne
-        print(f"z_hat shape is {z_hat.shape} and should be ({self.__n},1)")
+        #print(f"z_hat shape is {z_hat.shape} and should be ({self.__n},1)")
         KzY = self.gen_KzY(z)  # Vecteur KzY
-        print(f"KzY shape is {KzY.shape} and should be (1,{self.__n})")
-        print(f"a_i shape is {np.expand_dims(self.__matrix_A[:,0],axis=1).shape} and should be ({self.__n},1)")
+        #print(f"KzY shape is {KzY.shape} and should be (1,{self.__n})")
+        #print(f"a_i shape is {np.expand_dims(self.__matrix_A[:,0],axis=1).shape} and should be ({self.__n},1)")
 
         while s < self.__sparsity_level: # REPEAT (1) - (6) T_0 times
             # (1) COMPUTE TAU_I's
@@ -51,18 +53,20 @@ class KernelDictionaryLearning():
 
             # (2) FIND BEST RESIDUAL APPROXIMATION
             imax = np.argmax(np.abs(tau))
+            #print(tau)
+            if np.isclose(tau[imax],0) and s>0: # don't need to look for more atom is representation is exact
+                break
             
             # (3) UPDATE THE INDEX SET 
             I.add(imax)
 
             # (4) COMPUTE NEW ORTHOGONAL PROJECTION
             A_I = self.__matrix_A[:,list(I)]
-            print(f"A_I shape is {A_I.shape} and should be ({self.__n},{len(I)})")
-            print(A_I.T@self.__KYY@A_I)
+            #print(f"A_I shape is {A_I.shape} and should be ({self.__n},{len(I)})")
             x = np.linalg.inv(A_I.T@self.__KYY@A_I)@(KzY@A_I).T
 
             # (5) UPDATE Z APPROXIMATION
-            z_hat = A_I.dot(x)
+            z_hat = A_I.dot(x) 
 
             # (6) INCREMENT s
             s += 1
@@ -71,7 +75,10 @@ class KernelDictionaryLearning():
         x_out = np.zeros(self.__atom_number)
         for j,Ij in enumerate(list(I)):
             x_out[Ij] = x[j]
-        return x_out 
+            
+        norm_residual_error = np.squeeze(self.__kernel.evaluate(z,z) + z_hat.T@self.__KYY@z_hat-2*KzY@z_hat)
+        
+        return x_out,norm_residual_error
     
     def KSVD(self,X):
         " dictionary update step given X a sparse coding of signals"
@@ -80,8 +87,9 @@ class KernelDictionaryLearning():
             # (1) FIND SIGNALS USING A_k FOR REPRESENTATION
             w_k = set()
             for i in range(self.__n): # They say in range K (and also N) in article but i think it is n
-                if X[k,i] != 0 :
+                if not(np.isclose(X[k,i],0)) :
                     w_k.add(i)
+            
             omega_k = np.zeros((self.__n,len(w_k)))
             for i,w_k_i in enumerate(w_k):
                 omega_k[w_k_i,i] = 1
@@ -90,17 +98,15 @@ class KernelDictionaryLearning():
             sum = np.zeros((self.__n,self.__n))
             for j in range(self.__atom_number):
                 if j!=k:
-                    print("hello")
-                    print(np.dot(self.__matrix_A[:,j],X[j]).shape)
-                    print(np.dot(np.expand_dims(self.__matrix_A[:,j],axis=1),X[j]).shape)
-                    print("bye")
-                    sum+=np.dot(np.expand_dims(self.__matrix_A[:,j],axis=1),X[j])
+                    #print(np.linalg.norm(np.outer(self.__matrix_A[:,j],X[j])))
+                    sum+=np.outer(self.__matrix_A[:,j],X[j])
             E_k = np.eye(self.__n) - sum
             
             # (3) RESTRICT E_k
             EkR = E_k@omega_k
             
             # (4) APPLY SVD DECOMPOSITION
+            print(EkR.T@self.__KYY@EkR,EkR,omega_k)
             delta,V = np.linalg.eig(EkR.T@self.__KYY@EkR)
             largest_delta_index = np.argmax(delta)
             largest_delta = delta[largest_delta_index]
@@ -116,6 +122,7 @@ class KernelDictionaryLearning():
             atom_activated_index = rd.sample(index_up_to_K, self.__sparsity_level)
             for j in atom_activated_index:
                 self.__matrix_X[j,i] = 1
+        #print(self.__matrix_X)
     
     def init_A(self):
         if self.__n>=self.__atom_number:
@@ -123,6 +130,10 @@ class KernelDictionaryLearning():
             atom_dictionary_index = rd.sample(index_up_to_n, self.__sparsity_level)
             for k,atom in enumerate(atom_dictionary_index):
                 self.__matrix_A[atom,k]=1
+                
+    def calc_objective_fun(self):
+        temp = np.eye(self.__n) - self.__matrix_A@self.__matrix_X
+        return np.trace(temp.T@self.__KYY@temp)
     
     def learn(self):
         # Compute kernel image
@@ -136,7 +147,9 @@ class KernelDictionaryLearning():
         for i in range(self.__n_iter):
             # ALTERNATE n_iter TIMES sparse coding : (1) and dictionary update : (2)
             for j in range(self.__n):
-                self.__matrix_X[:,j] = self.KOMP(self.__signals.get_signal_i(j))
+                self.__matrix_X[:,j],_ = self.KOMP(self.__signals.get_signal_i(j))
+            #print(self.__matrix_X)
             self.KSVD(self.__matrix_X)
+            print(f"Total representation error is {self.calc_objective_fun()} at step {i}")
         return "successfull"
         
