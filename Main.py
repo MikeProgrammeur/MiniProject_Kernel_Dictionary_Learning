@@ -35,3 +35,5 @@ plt.show()
 # i think the current error is in ksvd, when we encouter an atom that isn't used what must we do ? Skip the procedure? but that 
 # is not specified in the pseudo code. But i think we skip svd for k-th atom if we notice that w_k is empty, that is why there is an error
 # with empy delta variable.
+# Init of A must also be verified 
+# Check why the eigvalues of EkrT KYY EkR are complex while this matrix is supposed to be symmetric
