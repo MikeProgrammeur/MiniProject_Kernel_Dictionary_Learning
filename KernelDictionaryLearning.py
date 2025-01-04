@@ -110,7 +110,8 @@ class KernelDictionaryLearning():
                 #print(EkR.T@self.__KYY@EkR,EkR,omega_k)
                 #aaaa = EkR.T@self.__KYY@EkR
                 #print(np.allclose(aaaa,aaaa.T))
-                delta,V = np.linalg.eigh(EkR.T@self.__KYY@EkR)
+                #delta,V = np.linalg.eigh(EkR.T@self.__KYY@EkR)
+                V,delta,VT = np.linalg.svd(a = EkR.T@self.__KYY@EkR, hermitian = True)
                 #print(delta)
                 largest_delta_index = np.argmax(delta)
                 largest_delta = delta[largest_delta_index]
