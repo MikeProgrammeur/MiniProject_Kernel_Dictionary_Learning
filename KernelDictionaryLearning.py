@@ -108,10 +108,10 @@ class KernelDictionaryLearning():
                 
                 # (4) APPLY SVD DECOMPOSITION
                 #print(EkR.T@self.__KYY@EkR,EkR,omega_k)
-                #aaaa = EkR.T@self.__KYY@EkR
+                aaaa = EkR.T@self.__KYY@EkR
                 #print(np.allclose(aaaa,aaaa.T))
                 #delta,V = np.linalg.eigh(EkR.T@self.__KYY@EkR)
-                V,delta,VT = np.linalg.svd(a = EkR.T@self.__KYY@EkR, hermitian = True)
+                V,delta,VT = np.linalg.svd(aaaa, hermitian = True)
                 #print(delta)
                 largest_delta_index = np.argmax(delta)
                 largest_delta = delta[largest_delta_index]
@@ -122,6 +122,11 @@ class KernelDictionaryLearning():
                 self.__matrix_A[:,k] = a_k
             else : 
                 self.__matrix_A[:,k] = np.random.randn(self.__n)
+                print(f"Init A random")
+                
+            mat = np.eye(self.__n) - self._KernelDictionaryLearning__matrix_A @ self._KernelDictionaryLearning__matrix_X
+            eigvals, eigvecs = np.linalg.eig(mat)
+            return np.max(np.abs(eigvals))
             
     def init_X(self):
         " initialize representation matrix X which is sparse"
@@ -161,7 +166,7 @@ class KernelDictionaryLearning():
             for j in range(self.__n):
                 self.__matrix_X[:,j],_ = self.KOMP(self.__signals.get_signal_i(j))
             #print(self.__matrix_X)
-            self.KSVD(self.__matrix_X)
-            print(f"Total representation error is {self.calc_objective_fun()} at step {i}")
+            vpmax = self.KSVD(self.__matrix_X)
+            print(f"Total representation error is {self.calc_objective_fun()} at step {i}, vp max de (I-AX) = {vpmax}")
         return "successfull"
         
