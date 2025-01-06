@@ -173,12 +173,21 @@ class KernelDictionaryLearning():
         #self.init_X() # not usefull actually
         self.init_A_random()
         
+        errors_komp = []
+        errors_ksvd = []
+        
         for i in range(self.__n_iter):
             # ALTERNATE n_iter TIMES sparse coding : (1) and dictionary update : (2)
             for j in range(self.__n):
                 self.__matrix_X[:,j],_ = self.KOMP(self.__signals.get_signal_i(j))
-            print(f"Total representation error is {self.calc_objective_fun()} at step {i} after KOMP")
+            error_komp = self.calc_objective_fun()
+            print(f"Total representation error is {error_komp} at step {i} after KOMP")
+            errors_komp.append(error_komp)
+            
             vpmax = self.KSVD(self.__matrix_X)
-            print(f"Total representation error is {self.calc_objective_fun()} at step {i} after KKSVD, vp max de (I-AX) = {vpmax}")
-        return "successfull"
+            error_ksvd = self.calc_objective_fun()
+            print(f"Total representation error is {error_ksvd} at step {i} after KKSVD") #, vp max de (I-AX) = {vpmax}")
+            errors_ksvd.append(error_ksvd)
+            
+        return "successfull", errors_komp, errors_ksvd
         
