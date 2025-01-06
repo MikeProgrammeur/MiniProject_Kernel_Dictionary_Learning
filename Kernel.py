@@ -16,5 +16,5 @@ def polynomial_kernel(c : float, d : float):
     return ker
     
 def gaussian_kernel(c : float):
-    ker = Kernel( lambda x,y : np.exp(np.linalg.norm(x-y)**2/c) )
+    ker = Kernel( lambda x,y : np.exp(-np.linalg.norm(x-y)**2/c) )
     return ker
