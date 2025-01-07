@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Signal():
     def __init__(self,signal,size):
@@ -38,3 +39,32 @@ def synthetic_circle(radius,data_number):
     
     signals_object = Signals(signals=signals_list)
     return signals_object
+
+def display_signal(signals1 : Signals, signals2: Signals, title : str, class1name : str, class2name : str):
+    "plot each point of a class in a specific color"
+    x_coords_1 = []
+    y_coords_1 = []
+    x_coords_2 = []
+    y_coords_2 = []
+    
+    for i in range(signals1.get_sig_number()):
+        signal = signals1.get_signal_i(i)
+        signal_array = signal.get_signal()
+        x_coords_1.append(signal_array[0])
+        y_coords_1.append(signal_array[1])
+    for i in range(signals2.get_sig_number()):
+        signal = signals2.get_signal_i(i)
+        signal_array = signal.get_signal()
+        x_coords_2.append(signal_array[0])
+        y_coords_2.append(signal_array[1])
+    
+    # Plot the points
+    plt.figure(figsize=(6, 6))
+    plt.scatter(x_coords_1, y_coords_1, color='blue', alpha=0.6, label=class1name)
+    plt.scatter(x_coords_2, y_coords_2, color='red', alpha=0.6, label=class2name)
+    plt.xlabel("x-coordinate")
+    plt.ylabel("y-coordinate")
+    plt.title(title)
+    plt.legend()
+    plt.grid(alpha=0.5)
+    plt.show()

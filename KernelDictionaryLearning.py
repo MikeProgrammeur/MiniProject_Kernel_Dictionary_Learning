@@ -120,9 +120,12 @@ class KernelDictionaryLearning():
                 
                 # (5) UPDATE k-th COLUMN OF A
                 self.__matrix_A[:,k] = a_k
-            else : 
-                self.__matrix_A[:,k] = np.random.randn(self.__n)
-                print(f"Init A random")
+            else : # if atom is unused randomise it to give it another chance
+                indi = rd.randint(0,self.__atom_number)
+                a_k = np.zeros(self.__n)
+                a_k[indi]=1
+                self.__matrix_A[:,k] = a_k
+                print(f"Init a_{k} random")
                 
             mat = np.eye(self.__n) - self._KernelDictionaryLearning__matrix_A @ self._KernelDictionaryLearning__matrix_X
             eigvals, eigvecs = np.linalg.eig(mat)
@@ -135,16 +138,24 @@ class KernelDictionaryLearning():
             atom_activated_index = rd.sample(index_up_to_K, self.__sparsity_level)
             for j in atom_activated_index:
                 self.__matrix_X[j,i] = 1
-        #print(self.__matrix_X)
     
-    def init_A(self):
-        " initialize A the atom representation dictionary"
+    def init_A_sparse(self):
+        " initialize A the atom representation dictionary each atom is just a random signal Yi"
         if self.__n >= self.__atom_number :
-            index_up_to_n = [n for n in range(self.__n)]
-            atom_dictionary_index = rd.sample(index_up_to_n, self.__sparsity_level)
-            for k,atom in enumerate(atom_dictionary_index):
-                self.__matrix_A[atom,k]=1
-        #self.__matrix_A = np.random.randn(self.__n,self.__atom_number # maybe better to initialize A like this??
+            for k in range(self.__atom_number):
+                selected_signal = rd.randint(0,self.__n-1)
+                self.__matrix_A[selected_signal,k]=1
+                a_k = self.__matrix_A[:,k]
+                normix = np.sqrt(a_k.T @ self.__KYY @ a_k)
+                self.__matrix_A[:,k]/=normix
+            
+    def init_A_random(self):
+        " randomly initialize A the atom representation dictionary each atom is a mix of all signals Y's"
+        self.__matrix_A = np.random.randn(self.__n,self.__atom_number)
+        for k in range(self.__atom_number):
+            a_k = self.__matrix_A[:,k]
+            normix = np.sqrt(a_k.T @ self.__KYY @ a_k)
+            self.__matrix_A[:,k]/=normix
                 
     def calc_objective_fun(self):
         " return the objective function || phi(Y) - phi(Y)AX||²"
@@ -157,16 +168,16 @@ class KernelDictionaryLearning():
         self.__KYY = self.gen_KYY()
         
         # Initialize with random sparse coding at the beginning
-        self.init_X()
-        self.init_A()
+        #self.init_X() #not usefull actually 
+        self.init_A_random()
         
         
         for i in range(self.__n_iter):
             # ALTERNATE n_iter TIMES sparse coding : (1) and dictionary update : (2)
             for j in range(self.__n):
                 self.__matrix_X[:,j],_ = self.KOMP(self.__signals.get_signal_i(j))
-            #print(self.__matrix_X)
+            print(f"Total representation error is {self.calc_objective_fun()} at step {i} after KOMP")
             vpmax = self.KSVD(self.__matrix_X)
-            print(f"Total representation error is {self.calc_objective_fun()} at step {i}, vp max de (I-AX) = {vpmax}")
+            print(f"Total representation error is {self.calc_objective_fun()} at step {i} after K-KSVD, vp max de (I-AX) = {vpmax}")
         return "successfull"
         
