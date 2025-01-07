@@ -4,7 +4,7 @@ import KernelDictionaryLearning as kdl
 import numpy as np
 import matplotlib.pyplot as plt
 
-data_sample_number = 200
+data_sample_number = 1500
 n_iter = 10
 
 polynomial_kernel = kn.polynomial_kernel(c=0,d=2)
@@ -20,7 +20,8 @@ coord_lim = 2
 x = np.linspace(-coord_lim, coord_lim, resolution_plot)
 y = np.linspace(-coord_lim, coord_lim, resolution_plot)
 
-Z = np.array([ np.array([ trained_kdl_r1.KOMP(sg.Signal([xi,yi],2))[1]/trained_kdl_r2.KOMP(sg.Signal([xi,yi],2))[1] for xi in x]) for yi in y ])
+epsilon = 1e-9
+Z = np.array([ np.array([ trained_kdl_r1.KOMP(sg.Signal([xi,yi],2))[1]/(trained_kdl_r2.KOMP(sg.Signal([xi,yi],2))[1]+epsilon) for xi in x]) for yi in y ])
 
 plt.contourf(x,y, Z, levels=50, cmap="coolwarm")
 plt.colorbar(label="Error Ratio")
